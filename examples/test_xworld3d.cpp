@@ -20,6 +20,7 @@ using namespace simulator::xworld3d;
 using namespace simulator;
 
 DECLARE_bool(task_groups_exclusive);
+DEFINE_bool(show_screen, false, "whether to show screen");
 
 int main(int argc, char** argv) {
     gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -34,7 +35,6 @@ int main(int argc, char** argv) {
 
     double reward = 0;
     double r = 0;
-    bool show_screen = false;
     while (true) {
         auto game_over_str =
             GameSimulator::decode_game_over_code(xwd->game_over());
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
         StatePacket actions;
         actions.add_buffer_id("action", {util::get_rand_ind(num_actions)});
         actions.add_buffer_str("pred_sentence", "");
-        r = xwd->take_actions(actions, act_rep, show_screen);
+        r = xwd->take_actions(actions, act_rep, FLAGS_show_screen);
 
         if (game_over_str != "alive") {
             LOG(INFO) << "game over because of " + game_over_str;

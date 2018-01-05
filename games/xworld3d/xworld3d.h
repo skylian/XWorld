@@ -44,7 +44,7 @@ enum X3NavAction {
 
 typedef std::map<std::string, X3ItemPtr> IDItemMap;
 typedef std::map<std::string, std::deque<X3ItemPtr>> ItemPoolOfOneKind;
-typedef std::unique_ptr<roboschool::World> WorldPtr;
+typedef std::unique_ptr<X3Item::World> WorldPtr;
 
 /**
  * An container that recycles items removed from X3World.
@@ -83,16 +83,16 @@ private:
 
 class X3Stadium {
 public:
-    X3Stadium() { olist_.clear(); };
+    X3Stadium() { plist_.clear(); };
 
     void load_stadium(const std::string& item_path, const WorldPtr& world);
 
 private:
     static const int STADIUM_SCALE = 0.01f;
 
-    roboschool::Thingy floor_; // prevent the pointer to thingy being
-                               // released
-    std::vector<roboschool::Object> olist_;
+    X3Item::Thing floor_; // prevent the pointer to thingy being
+                          // released
+    std::vector<X3Item::Part> plist_;
 };
 
 class X3World {
@@ -137,6 +137,8 @@ public:
 
     bool act(const size_t agent_id, const size_t action);
 
+    void joint_control(const size_t agent_id, const size_t joint_id, const x3real delta);
+    
     roboschool::RenderResult render(const size_t agent_id, bool debug);
 
     void step(const int frame_skip);
@@ -159,6 +161,10 @@ private:
     void add_item(const Entity& e);
 
     void remove_item(X3ItemPtr& item);
+
+    void register_item(const X3ItemPtr& item);
+
+    void unregister_item(const X3ItemPtr& item);
 
     std::string conf_;
     int height_;         // world size

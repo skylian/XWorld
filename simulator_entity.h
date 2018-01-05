@@ -87,6 +87,7 @@ class Vec3 {
  */
 struct Entity {
     Entity() {}
+
     Entity(boost::python::dict e) {
         const boost::python::tuple& l = boost::python::extract<boost::python::tuple>(e["loc"]);
         type = boost::python::extract<std::string>(e["type"]);
@@ -101,10 +102,24 @@ struct Entity {
         asset_path = boost::python::extract<std::string>(e["asset_path"]);
         color = boost::python::extract<std::string>(e["color"]);
         CHECK(offset >= 0 && offset <= 1 - scale);
+        auto endswith = [](std::string str, std::string suffix) -> bool {
+                            size_t p = str.rfind(suffix);
+                            return (p != std::string::npos &&
+                                    p == str.length() - suffix.length());
+                        };
+        if (endswith(asset_path, ".xml")) {
+            model_type = "mjcf";
+        } else if (endswith(asset_path, ".urdf")) {
+            model_type = "urdf";
+        } else {
+            LOG(FATAL) << "unknown model file type";
+        }
     }
+
     boost::python::dict to_py_dict() const {
         boost::python::dict d;
         d["type"] = type;
+        // python end is unaware of attribute "model_type"
         d["id"] = id;
         d["loc"] = boost::python::make_tuple(loc.x, loc.y, loc.z);
         d["yaw"] = yaw;
@@ -117,6 +132,11 @@ struct Entity {
     }
     std::string type;
     std::string id; // unique identifier of the object instance
+
+    std::string model_type; // type of model conf file [udrf|mjcf]
+                            // this is only used for cpp to determine which
+                            // loading function to call; python end is unaware
+                            // of it
     Vec3 loc;
     double yaw; // the heading orientation of the object
     double scale;  // the scale to be rendered

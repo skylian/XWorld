@@ -28,39 +28,35 @@ namespace xworld3d {
 #define EPSILON 1e-6
 
 class X3Item;
-class X3Agent;
 
 typedef double x3real;
+typedef std::shared_ptr<roboschool::Object> ObjectPtr;
 typedef std::shared_ptr<X3Item> X3ItemPtr;
-typedef std::shared_ptr<X3Agent> X3AgentPtr;
 
 class X3Item {
+public:
+    using World = roboschool::World;
+    using Part = roboschool::Object;
+    using Thing = roboschool::Thingy;
 protected:
     using Pose = roboschool::Pose;
-    using Object = roboschool::Object;
-    using World = roboschool::World;
-    using Thingy = roboschool::Thingy;
     using RenderResult = roboschool::RenderResult;
     using Camera = roboschool::Camera;
 public:
     static X3ItemPtr create_item(const Entity& e, World& world);
 
-    X3Item(const Entity& e, x3real scale, World& world);
+    X3Item(const Entity& e, World& world);
 
     X3Item(const X3Item&) = delete;
 
     X3Item& operator=(const X3Item&) = delete;
 
-    void destroy() {
-        object_.destroy();
-    }
-
     // destructor
     virtual ~X3Item() { this->destroy(); }
 
-    const Object& object() const { return object_; }
+    void destroy();
 
-    Object& object_mutable() { return object_; }
+    std::vector<Part>& parts() { return parts_; }
 
     // get the type of the item
     std::string type() const { return e_.type; }
@@ -80,50 +76,42 @@ public:
     // get the location of the item
     Vec3 location() const;
 
-    Pose pose() const { return object_.pose(); }
+    Pose pose(int part_id = 0) const;
 
-    void get_direction(x3real &dir_x, x3real &dir_y) const {
-        x3real yaw = std::get<2>(object_.pose().rpy());
-        dir_x = cos(yaw);
-        dir_y = sin(yaw);
-    }
-
-    // set the type of the item
-    void set_item_type(const std::string& item_type) { e_.type = item_type; }
+    void get_direction(x3real &dir_x, x3real &dir_y) const;
 
     Entity entity() const { return e_; }
 
     void set_entity(const Entity& e);
 
-    int b3handle() const { return b3handle_; }
-
     void sync_entity_info();
 
-    virtual void move_forward() { LOG(FATAL) << "actions not defined!"; }
+    void no_op();
 
-    virtual void move_backward() { LOG(FATAL) << "actions not defined!"; }
+    void move_forward();
 
-    virtual void move_left() { LOG(FATAL) << "actions not defined!"; }
+    void move_backward();
 
-    virtual void move_right() { LOG(FATAL) << "actions not defined!"; }
+    void move_left();
 
-    virtual void turn_left() { LOG(FATAL) << "actions not defined!"; }
+    void move_right();
 
-    virtual void turn_right() { LOG(FATAL) << "actions not defined!"; }
+    void turn_left();
 
-    virtual void jump() { LOG(FATAL) << "actions not defined!"; }
+    void turn_right();
 
-    virtual void clear_move() { LOG(FATAL) << "actions not defined!"; }
+    void clear_move();
 
     void move_underground();
 
     void move_to(const Vec3& loc);
 
-    virtual X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
-                                   const std::string& type) {
+    virtual void joint_control(const size_t joint_id, const x3real delta) {
         LOG(FATAL) << "actions not defined!";
     }
 
+    virtual X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
+                                   const std::string& type) = 0;
     virtual int get_num_actions() const { return 0; }
 
     bool equal(const X3Item& i) const {
@@ -139,48 +127,55 @@ protected:
     void set_speed(const x3real vx, const x3real vy, const x3real vz);
 
     void set_pose_and_speed(const Pose& pose,
-                            const x3real vx, const x3real vy, const x3real vz);
+                            const x3real vx,
+                            const x3real vy,
+                            const x3real vz);
 
+   virtual x3real reach_test(const Pose& pose) {
+        LOG(FATAL) << "function not defined!;";
+    }
+
+    const x3real move_speed_norm_;
+    const x3real jump_speed_norm_;
+    const x3real reaching_dist_; // An agent can collect a goal if the goal is
+                                 // within this reaching distance
     Entity e_;
-    Object object_;
-    int b3handle_;
+    std::vector<Part> parts_;
+    Part* root_part_ptr_;
 };
 
-class X3Agent : public X3Item {
+
+class URDFItem : public X3Item {
 public:
-    X3Agent(const Entity& e, x3real scale, World& world);
+    URDFItem(const Entity& e, x3real scale, World& world);
 
-    X3Agent(const X3Agent&) = delete;
+    URDFItem(const URDFItem&) = delete;
 
-    X3Agent& operator=(const X3Agent&) = delete;
+    URDFItem& operator=(const URDFItem&) = delete;
 
-    void move_forward() override;
+    X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
+                           const std::string& type) override;
+protected:
+    x3real reach_test(const Pose& pose) override;
 
-    void move_backward() override;
+    int yaw_id_;
+};
 
-    void move_left() override;
+class MuJoCoItem : public X3Item {
+public:
+    MuJoCoItem(const Entity& e, x3real scale, World& world);
 
-    void move_right() override;
+    MuJoCoItem(const MuJoCoItem&) = delete;
 
-    void turn_left() override;
-
-    void turn_right() override;
-
-    void jump() override;
-
-    void clear_move() override;
+    MuJoCoItem& operator=(const MuJoCoItem&) = delete;
 
     X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
                            const std::string& type) override;
 
-private:
-    x3real reach_test(const Pose& pose);
+    void joint_control(const size_t joint_id, const x3real delta) override;
 
-    const x3real move_speed_norm_;
-    const x3real jump_speed_norm_;
-    const x3real reaching_dist_; // An agent can collect this goal if it is
-                                // within the reaching distance of this goal
-    int yaw_id_;
+private:
+    x3real reach_test(const Pose& pose) override;
 };
 
 class X3Camera {

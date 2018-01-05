@@ -61,16 +61,16 @@ void X3ItemPool::recycle_item(const X3ItemPtr& item) {
 
 void X3Stadium::load_stadium(const std::string& item_path,
                              const WorldPtr& world) {
-    if (olist_.size()) {
+    if (plist_.size()) {
         // stadium has already been loaded
         return;
     }
     std::string floor_file = item_path + "/floor/floor.xml";
     std::string stadium_file = item_path + "/floor/stadium/stadium0.obj";
 
-    olist_ = world->load_mjcf(floor_file);
-    for (auto& o : olist_) {
-        o.query_position();
+    plist_ = world->load_mjcf(floor_file);
+    for (auto& p : plist_) {
+        p.query_position();
     }
 
     roboschool::Pose stadium_pose(0.0f, 0.0f, 0.0f);
@@ -96,7 +96,6 @@ X3World::X3World(const std::string& conf, bool print_conf, bool big_screen) :
             LOG(INFO) << line;
         }
     }
-
     std::unique_ptr<pt::ptree> tree;
     tree.reset(new pt::ptree);
     try {
@@ -149,8 +148,8 @@ X3World::X3World(const std::string& conf, bool print_conf, bool big_screen) :
 }
 
 X3World::~X3World() {
-    items_.clear();
     agents_.clear();
+    items_.clear();
     world_->clean_everything();
     b3handle_to_id_.clear();
 }
@@ -197,10 +196,11 @@ void X3World::clear_world() {
     // move all items underground to pretend they are gone
     for (auto& i : items_) {
         i.second->move_underground();
+        unregister_item(i.second);
         item_pool_.recycle_item(i.second);
     }
-    items_.clear();
     agents_.clear();
+    items_.clear();
     // floor is not cleared
 }
 
@@ -249,11 +249,12 @@ void X3World::add_item(const Entity& e) {
 
     // TODO: check overlapping with existing items
     auto item_ptr = item_pool_.get_item(e, world_);
-    b3handle_to_id_[item_ptr->b3handle()] = e.id;
+
     items_[e.id] = item_ptr;
     if (e.type == "agent") {
         agents_.push_back(item_ptr);
     }
+    register_item(item_ptr);
 }
 
 X3ItemPtr& X3World::get_agent(const size_t agent_id) {
@@ -274,6 +275,10 @@ bool X3World::act(const size_t agent_id, const size_t action) {
 }
 
 bool X3World::apply_action(const X3ItemPtr& item, const size_t action) {
+    auto pose = item->pose(-1);
+    auto rpy = pose.rpy();
+    LOG(INFO) << pose.x() << " " << pose.y() << " " << pose.z() << " "
+              << std::get<0>(rpy) << " " << std::get<1>(rpy) << " " << std::get<2>(rpy);
     bool action_success = true;
     switch (action) {
         case X3NavAction::MOVE_FORWARD:
@@ -294,9 +299,6 @@ bool X3World::apply_action(const X3ItemPtr& item, const size_t action) {
         case X3NavAction::TURN_RIGHT:
             item->turn_right();
             break;
-        case X3NavAction::JUMP:
-            item->jump();
-            break;
         case X3NavAction::COLLECT: {
             X3ItemPtr goal = item->collect_item(items_, "goal");
             if (goal && goal->type() != "agent") {
@@ -313,15 +315,34 @@ bool X3World::apply_action(const X3ItemPtr& item, const size_t action) {
         default:
             LOG(ERROR) << "unknown action id: " << action;
     }
+
     return action_success;
+}
+
+void X3World::joint_control(const size_t agent_id, const size_t joint_id, const x3real delta) {
+    auto agent_ptr = get_agent(agent_id);
+    agent_ptr->joint_control(joint_id, delta);
 }
 
 void X3World::remove_item(X3ItemPtr& item) {
     auto it = items_.find(item->id());
     if (it != items_.end()) {
         item->move_underground();
+        unregister_item(item);
         item_pool_.recycle_item(item);
         items_.erase(it);
+    }
+}
+
+void X3World::register_item(const X3ItemPtr& item) {
+    for (auto const& p : item->parts()) {
+        b3handle_to_id_[p.bullet_handle()] = item->id();
+    }
+}
+
+void X3World::unregister_item(const X3ItemPtr& item) {
+    for (auto const& p : item->parts()) {
+        b3handle_to_id_.erase(p.bullet_handle());
     }
 }
 
@@ -335,15 +356,24 @@ void X3World::step(const int frame_skip) {
     for (auto& i : items_) {
         i.second->sync_entity_info();
     }
+
+    auto s = contact_list(agents_[0]);
+    for (auto& id : s) {
+        LOG(INFO) << id;
+    }
 }
 
 std::set<std::string> X3World::contact_list(X3ItemPtr& item) {
-    auto& o = item->object_mutable();
-    auto l = o.contact_list();
-
     std::set<std::string> id_set;
-    for (auto& t : l) {
-        id_set.insert(b3handle_to_id_[t.bullet_handle()]);
+    auto& parts = item->parts();
+    for (auto& p : parts) {
+        auto l = p.contact_list();
+
+        for (auto& t : l) {
+            if (t.bullet_handle() >=0) {
+                id_set.insert(b3handle_to_id_[t.bullet_handle()]);
+            }
+        }
     }
 
     return id_set;

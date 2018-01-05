@@ -173,10 +173,12 @@ class XWorld3DTask(object):
         Extract collision events from game event message
         """
         collision_events = [e for e in events.strip().split('\n') if e.startswith("collision")]
+        print collision_events
         hits = set()
         for e in collision_events:
             o = e.split(':')[1].split('|')
             hits.update(o)
+        print hits
 
         return hits
 

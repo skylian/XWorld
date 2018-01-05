@@ -59,6 +59,8 @@ public:
 
     std::set<std::string> contact_list(const size_t agent_id);
 
+    void joint_control(const size_t agent_id, const size_t joint_id, const x3real delta);
+
 private:
     X3SimulatorImpl(const X3SimulatorImpl&) = delete;
 
@@ -126,9 +128,13 @@ std::set<std::string> X3SimulatorImpl::contact_list(const size_t agent_id) {
     return xworld3d_.contact_list(xworld3d_.get_agent(agent_id));
 }
 
+void X3SimulatorImpl::joint_control(const size_t agent_id, const size_t joint_id, const x3real delta) {
+    xworld3d_.joint_control(agent_id, joint_id, delta);
+}
+
 X3Simulator::X3Simulator(bool print, bool big_screen) :
         legal_actions_({MOVE_FORWARD, MOVE_BACKWARD, MOVE_LEFT, MOVE_RIGHT,
-                        TURN_LEFT, TURN_RIGHT}),
+                        TURN_LEFT, TURN_RIGHT, JUMP, NOOP}),
         height_(0), width_(0),
         img_height_out_(FLAGS_x3_training_img_height),
         img_width_out_(FLAGS_x3_training_img_width),
@@ -334,9 +340,11 @@ float X3Simulator::take_action(const StatePacket& actions) {
             case 'w':
                 action = X3NavAction::MOVE_FORWARD;
                 break;
+            case 't':
+                action = X3NavAction::NOOP;
+                break;
             case 's':
                 action = X3NavAction::MOVE_BACKWARD;
-                //                    action = X3NavAction::STOP;
                 break;
             case 'a':
                 action = X3NavAction::MOVE_LEFT;
@@ -350,17 +358,108 @@ float X3Simulator::take_action(const StatePacket& actions) {
             case 'e':
                 action = X3NavAction::TURN_RIGHT;
                 break;
-            case 'j':
+            case 'x':
                 action = X3NavAction::JUMP;
                 break;
             case 'c':
                 action = X3NavAction::COLLECT;
                 break;
-            case 'z':
+            case 'z': {
                 bird_view_ = !bird_view_;
+                action = X3NavAction::NOOP;
                 break;
+            }
+            case 'n': {
+                impl_->joint_control(active_agent_id_, 4, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'N': {
+                impl_->joint_control(active_agent_id_, 4, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'h': {
+                impl_->joint_control(active_agent_id_, 6, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'H': {
+                impl_->joint_control(active_agent_id_, 6, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'y': {
+                impl_->joint_control(active_agent_id_, 8, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'Y': {
+                impl_->joint_control(active_agent_id_, 8, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'm': {
+                impl_->joint_control(active_agent_id_, 21, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'M': {
+                impl_->joint_control(active_agent_id_, 21, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'j': {
+                impl_->joint_control(active_agent_id_, 23, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'J': {
+                impl_->joint_control(active_agent_id_, 23, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case ',': {
+                impl_->joint_control(active_agent_id_, 28, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case '<': {
+                impl_->joint_control(active_agent_id_, 28, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'k': {
+                impl_->joint_control(active_agent_id_, 30, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'K': {
+                impl_->joint_control(active_agent_id_, 30, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case '.': {
+                impl_->joint_control(active_agent_id_, 36, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case '>': {
+                impl_->joint_control(active_agent_id_, 36, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'l': {
+                impl_->joint_control(active_agent_id_, 38, 0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
+            case 'L': {
+                impl_->joint_control(active_agent_id_, 38, -0.1);
+                action = X3NavAction::NOOP; 
+                break;
+            }
             default:
-                //                    action = X3NavAction::NOOP;
                 break;
         }
         CHECK(std::find(legal_actions_.begin(), legal_actions_.end(), action)
@@ -383,6 +482,7 @@ float X3Simulator::take_action(const StatePacket& actions) {
     }
     impl_->step(1);
     auto s = impl_->contact_list(active_agent_id_);
+    LOG(INFO) << "collision list: " << s.size();
     record_collision_events(s);
 
     return 0;  // xworld rewards are given by the teacher
