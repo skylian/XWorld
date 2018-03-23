@@ -50,19 +50,8 @@ void X3Item::destroy() {
     }
 }
 
-Vec3 X3Item::location() const {
-    const Pose& pose = root_part_ptr_->pose();
-    return Vec3(pose.x(), pose.y(), pose.z());
-}
-
-X3Item::Pose X3Item::pose(int part_id) const {
-    if (part_id = -1) {
-        return root_part_ptr_->pose();
-    } else {
-        CHECK(part_id >= 0 && part_id < parts_.size())
-                << "part id out of range";
-        return parts_[part_id].pose();
-    }
+X3Item::Pose X3Item::pose() const {
+    return root_part_ptr_->pose();
 }
 
 void X3Item::get_direction(x3real &dir_x, x3real &dir_y) const {
@@ -85,81 +74,10 @@ void X3Item::sync_entity_info() {
     e_.yaw = std::get<2>(pose.rpy());
 }
 
-void X3Item::no_op() {
-    //root_part_ptr_->set_speed(0.0f, 0.0f, 0.0f);
-}
-
-void X3Item::move_forward() {
-    Pose pose(root_part_ptr_->pose());
-    x3real yaw = std::get<2>(pose.rpy());
-    //pose.set_xyz(pose.x(), pose.y(), pose.z());
-    x3real vx = move_speed_norm_ * cos(yaw);
-    x3real vy = move_speed_norm_ * sin(yaw);
-    x3real vz = root_part_ptr_->speed_z();
-    LOG(INFO) << "move_forward: " << pose.x() << " " << pose.y() << " " << pose.z();
-    LOG(INFO) << "move_forward: " << vx << " " << vy << " " << vz;
-    root_part_ptr_->set_speed(vx, vy, 0.0f);
-}
-
-void X3Item::move_backward() {
-    Pose pose(root_part_ptr_->pose());
-    x3real yaw = std::get<2>(pose.rpy());
-    pose.set_xyz(pose.x(), pose.y(), pose.z());
-    x3real vx = -move_speed_norm_ * cos(yaw);
-    x3real vy = -move_speed_norm_ * sin(yaw);
-    x3real vz = root_part_ptr_->speed_z();
-    root_part_ptr_->set_speed(vx, vy, 0.0f);
-}
-
-void X3Item::move_left() {
-    Pose pose(root_part_ptr_->pose());
-    x3real yaw = std::get<2>(pose.rpy());
-    pose.set_xyz(pose.x(), pose.y(), pose.z());
-    x3real vx = -move_speed_norm_ * sin(yaw);
-    x3real vy = move_speed_norm_ * cos(yaw);
-    x3real vz = root_part_ptr_->speed_z();
-    root_part_ptr_->set_speed(vx, vy, 0.0f);
-}
-
-void X3Item::move_right() {
-    Pose pose(root_part_ptr_->pose());
-    x3real yaw = std::get<2>(pose.rpy());
-    pose.set_xyz(pose.x(), pose.y(), pose.z());
-    x3real vx = move_speed_norm_ * sin(yaw);
-    x3real vy = -move_speed_norm_ * cos(yaw);
-    x3real vz = root_part_ptr_->speed_z();
-    root_part_ptr_->set_speed(vx, vy, 0.0f);
-}
-
-void X3Item::turn_left() {
-    LOG(INFO) << "turn left";
-    Pose pose(root_part_ptr_->pose());
-    pose.set_xyz(pose.x(), pose.y(), pose.z());
-    pose.rotate_z(FLAGS_x3_turning_rad);
-    x3real vz = root_part_ptr_->speed_z();
-    root_part_ptr_->set_pose(pose);
-    //root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
-}
-
-void X3Item::turn_right() {
-    Pose pose(root_part_ptr_->pose());
-    x3real yaw = std::get<2>(pose.rpy());
-    pose.set_xyz(pose.x(), pose.y(), pose.z());
-    pose.rotate_z(-FLAGS_x3_turning_rad);
-    LOG(INFO) << "turn right from " << yaw << " to " << std::get<2>(pose.rpy());
-    x3real vz = root_part_ptr_->speed_z();
-    root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
-}
-
 void X3Item::move_underground() {
    Pose pose(root_part_ptr_->pose());
    pose.set_xyz(pose.x(), pose.y(), -2);
    root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
-}
-
-void X3Item::clear_move() {
-    Pose pose(root_part_ptr_->pose());
-    root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
 }
 
 void X3Item::set_speed(x3real vx, x3real vy, x3real vz) {
@@ -203,6 +121,70 @@ X3ItemPtr URDFItem::collect_item(const std::map<std::string, X3ItemPtr>& items,
     return item;
 }
 
+void URDFItem::move_forward() {
+    Pose pose(root_part_ptr_->pose());
+    x3real yaw = std::get<2>(pose.rpy());
+    x3real vx = move_speed_norm_ * cos(yaw);
+    x3real vy = move_speed_norm_ * sin(yaw);
+    x3real vz = root_part_ptr_->speed_z();
+    root_part_ptr_->set_speed(vx, vy, 0.0f);
+}
+
+void URDFItem::move_backward() {
+    Pose pose(root_part_ptr_->pose());
+    x3real yaw = std::get<2>(pose.rpy());
+    pose.set_xyz(pose.x(), pose.y(), pose.z());
+    x3real vx = -move_speed_norm_ * cos(yaw);
+    x3real vy = -move_speed_norm_ * sin(yaw);
+    x3real vz = root_part_ptr_->speed_z();
+    root_part_ptr_->set_speed(vx, vy, 0.0f);
+}
+
+void URDFItem::move_left() {
+    Pose pose(root_part_ptr_->pose());
+    x3real yaw = std::get<2>(pose.rpy());
+    pose.set_xyz(pose.x(), pose.y(), pose.z());
+    x3real vx = -move_speed_norm_ * sin(yaw);
+    x3real vy = move_speed_norm_ * cos(yaw);
+    x3real vz = root_part_ptr_->speed_z();
+    root_part_ptr_->set_speed(vx, vy, 0.0f);
+}
+
+void URDFItem::move_right() {
+    Pose pose(root_part_ptr_->pose());
+    x3real yaw = std::get<2>(pose.rpy());
+    pose.set_xyz(pose.x(), pose.y(), pose.z());
+    x3real vx = move_speed_norm_ * sin(yaw);
+    x3real vy = -move_speed_norm_ * cos(yaw);
+    x3real vz = root_part_ptr_->speed_z();
+    root_part_ptr_->set_speed(vx, vy, 0.0f);
+}
+
+void URDFItem::turn_left() {
+    LOG(INFO) << "turn left";
+    Pose pose(root_part_ptr_->pose());
+    pose.set_xyz(pose.x(), pose.y(), pose.z());
+    pose.rotate_z(FLAGS_x3_turning_rad);
+    x3real vz = root_part_ptr_->speed_z();
+    root_part_ptr_->set_pose(pose);
+    root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
+}
+
+void URDFItem::turn_right() {
+    Pose pose(root_part_ptr_->pose());
+    x3real yaw = std::get<2>(pose.rpy());
+    pose.set_xyz(pose.x(), pose.y(), pose.z());
+    pose.rotate_z(-FLAGS_x3_turning_rad);
+    LOG(INFO) << "turn right from " << yaw << " to " << std::get<2>(pose.rpy());
+    x3real vz = root_part_ptr_->speed_z();
+    root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
+}
+
+void URDFItem::clear_move() {
+    Pose pose(root_part_ptr_->pose());
+    root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
+}
+
 x3real URDFItem::reach_test(const Pose& pose) {
     const Pose self = root_part_ptr_->pose();
     x3real yaw = std::get<2>(pose.rpy());
@@ -221,6 +203,7 @@ x3real URDFItem::reach_test(const Pose& pose) {
     return reaching_score;
 }
 
+/********************************* MuJoCoItem *********************************/
 MuJoCoItem::MuJoCoItem(const Entity& e, x3real scale, World& world) :
         X3Item(e, world) {
     parts_ = world.load_mjcf(e.asset_path);
@@ -228,18 +211,80 @@ MuJoCoItem::MuJoCoItem(const Entity& e, x3real scale, World& world) :
     //LOG(INFO) << "MuJoCoItem " << root_part_ptr_->base_part().get_name();
 
     Pose pose(e_.loc.x * UNIT, e_.loc.y * UNIT, e_.loc.z * UNIT);
-    pose.rotate_z(e_.yaw);
     root_part_ptr_->set_pose_and_speed(pose, 0.0f, 0.0f, 0.0f);
+    root_part_ptr_->joint_reset_current_position(0, 0, 0);
+    root_part_ptr_->joint_reset_current_position(1, 0, 0);
+    root_part_ptr_->joint_reset_current_position(2, e_.yaw, 0);
+}
 
-    Pose p = root_part_ptr_->pose();
+void MuJoCoItem::move_forward() {
+/*
+    x3real dir_x, dir_y;
+    get_direction(dir_x, dir_y);
+    float pos, vel;
+    root_part_ptr_->joint_current_position(0, pos, vel);
+    pos += move_speed_norm_ * dir_x * 0.1;
+    root_part_ptr_->joint_set_servo_target(0, pos);
+    root_part_ptr_->joint_current_position(1, pos, vel);
+    pos += move_speed_norm_ * dir_y * 0.1;
+    root_part_ptr_->joint_set_servo_target(1, pos);
+*/
+    x3real dir_x, dir_y;
+    get_direction(dir_x, dir_y);
+    x3real vx = move_speed_norm_ * dir_x;
+    x3real vy = move_speed_norm_ * dir_y;
+    root_part_ptr_->joint_set_target_speed(0, vx);
+    root_part_ptr_->joint_set_target_speed(1, vy);
+}
+
+void MuJoCoItem::move_backward() {
+/*
+    x3real dir_x, dir_y;
+    get_direction(dir_x, dir_y);
+    float pos, vel;
+    root_part_ptr_->joint_current_position(0, pos, vel);
+    pos += -move_speed_norm_ * dir_x * 0.01;
+    root_part_ptr_->joint_set_servo_target(0, pos);
+    root_part_ptr_->joint_current_position(1, pos, vel);
+    pos += -move_speed_norm_ * dir_y * 0.01;
+    root_part_ptr_->joint_set_servo_target(1, pos);
+*/
+    x3real dir_x, dir_y;
+    get_direction(dir_x, dir_y);
+    x3real vx = -move_speed_norm_ * dir_x;
+    x3real vy = -move_speed_norm_ * dir_y;
+    root_part_ptr_->joint_set_target_speed(0, vx);
+    root_part_ptr_->joint_set_target_speed(1, vy);
+}
+
+void MuJoCoItem::move_left() {
+    x3real dir_x, dir_y;
+    get_direction(dir_x, dir_y);
+    x3real vx = -move_speed_norm_ * dir_y;
+    x3real vy = move_speed_norm_ * dir_x;
+    root_part_ptr_->joint_set_target_speed(0, vx);
+    root_part_ptr_->joint_set_target_speed(1, vy);
+}
+
+void MuJoCoItem::move_right() {
+    x3real dir_x, dir_y;
+    get_direction(dir_x, dir_y);
+    x3real vx = move_speed_norm_ * dir_y;
+    x3real vy = -move_speed_norm_ * dir_x;
+    root_part_ptr_->joint_set_target_speed(0, vx);
+    root_part_ptr_->joint_set_target_speed(1, vy);
+}
+
+void MuJoCoItem::turn_left() {
+}
+
+void MuJoCoItem::turn_right() {
+}
+
+void MuJoCoItem::clear_move() {
 }
 
 void MuJoCoItem::joint_control(const size_t joint_id, const x3real delta) {
-    float pos, vel;
-    root_part_ptr_->current_relative_position(joint_id, pos, vel);
-    pos += delta;
-    pos = std::min(std::max(-1.0f, pos), 1.0f);
-    root_part_ptr_->joint_control(joint_id, pos);
 }
 
 X3ItemPtr MuJoCoItem::collect_item(
@@ -271,6 +316,7 @@ void X3Camera::update(bool bird_view) {
     Pose p = item_->pose();
     x3real dir_x, dir_y;
     item_->get_direction(dir_x, dir_y);
+    LOG(INFO) << "camera update " << dir_x << " " << dir_y;
     if (!bird_view) {
         x3real dir_x, dir_y;
         item_->get_direction(dir_x, dir_y);
@@ -278,7 +324,7 @@ void X3Camera::update(bool bird_view) {
                                  p.x() + dir_x, p.y() + dir_y, p.z() + 1.0 * X3Item::UNIT);
     } else {
         // bird view
-        camera_.move_and_look_at(p.x(), p.y(), p.z()+1/*CAMERA_BIRD_VIEW_HEIGHT*/, p.x(), p.y(), p.z());
+        camera_.move_and_look_at(p.x()-dir_x, p.y()-dir_y, CAMERA_BIRD_VIEW_HEIGHT, p.x(), p.y(), p.z());
     }
 }
 

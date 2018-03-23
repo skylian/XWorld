@@ -482,7 +482,6 @@ float X3Simulator::take_action(const StatePacket& actions) {
     }
     impl_->step(1);
     auto s = impl_->contact_list(active_agent_id_);
-    LOG(INFO) << "collision list: " << s.size();
     record_collision_events(s);
 
     return 0;  // xworld rewards are given by the teacher

@@ -24,9 +24,11 @@ class XWorld3DNav(XWorld3DEnv):
         n_levels = max_h - min_dim + 1
 
         #### define curriculum #########
-        num_goals_seq = [3, 3, 3, 3, 3]
+        # num_goals_seq = [3, 3, 3, 3, 3]
+        num_goals_seq = [3, 3, 3, 3, 1]
         goal_classes_seq = [len(goal_names)] * n_levels
-        num_blocks_seq = [0, 2, 4, 7, 10]
+        # num_blocks_seq = [0, 2, 4, 7, 10]
+        num_blocks_seq = [0, 2, 4, 7, 0]
         assert len(num_goals_seq) == n_levels \
             and len(goal_classes_seq) == n_levels \
             and len(num_blocks_seq) == n_levels

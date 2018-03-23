@@ -8,6 +8,7 @@ ExternalProject_Add(xworld3d_model_zoo
   BUILD_COMMAND ""
   INSTALL_COMMAND ""
   CONFIGURE_COMMAND ""
+  UPDATE_DISCONNECTED 1
 )
 
 ExternalProject_Get_Property(xworld3d_model_zoo SOURCE_DIR)

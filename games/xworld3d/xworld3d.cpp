@@ -275,10 +275,8 @@ bool X3World::act(const size_t agent_id, const size_t action) {
 }
 
 bool X3World::apply_action(const X3ItemPtr& item, const size_t action) {
-    auto pose = item->pose(-1);
+    auto pose = item->pose();
     auto rpy = pose.rpy();
-    LOG(INFO) << pose.x() << " " << pose.y() << " " << pose.z() << " "
-              << std::get<0>(rpy) << " " << std::get<1>(rpy) << " " << std::get<2>(rpy);
     bool action_success = true;
     switch (action) {
         case X3NavAction::MOVE_FORWARD:

@@ -73,10 +73,7 @@ public:
     // get the color of the item
     std::string color() const { return e_.color; }
 
-    // get the location of the item
-    Vec3 location() const;
-
-    Pose pose(int part_id = 0) const;
+    Pose pose() const;
 
     void get_direction(x3real &dir_x, x3real &dir_y) const;
 
@@ -86,25 +83,21 @@ public:
 
     void sync_entity_info();
 
-    void no_op();
+    virtual void move_forward() = 0;
 
-    void move_forward();
+    virtual void move_backward() = 0;
 
-    void move_backward();
+    virtual void move_left() = 0;
 
-    void move_left();
+    virtual void move_right() = 0;
 
-    void move_right();
+    virtual void turn_left() = 0;
 
-    void turn_left();
+    virtual void turn_right() = 0;
 
-    void turn_right();
-
-    void clear_move();
+    virtual void clear_move() = 0;
 
     void move_underground();
-
-    void move_to(const Vec3& loc);
 
     virtual void joint_control(const size_t joint_id, const x3real delta) {
         LOG(FATAL) << "actions not defined!";
@@ -155,6 +148,21 @@ public:
 
     X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
                            const std::string& type) override;
+
+    virtual void move_forward() override;
+    
+    virtual void move_backward() override;
+
+    virtual void move_left() override;
+
+    virtual void move_right() override;
+
+    virtual void turn_left() override;
+
+    virtual void turn_right() override;
+
+    virtual void clear_move() override;
+
 protected:
     x3real reach_test(const Pose& pose) override;
 
@@ -168,6 +176,20 @@ public:
     MuJoCoItem(const MuJoCoItem&) = delete;
 
     MuJoCoItem& operator=(const MuJoCoItem&) = delete;
+
+    void move_forward() override;
+
+    void move_backward() override;
+
+    void move_left() override;
+
+    void move_right() override;
+
+    void turn_left() override;
+
+    void turn_right() override;
+
+    void clear_move() override;
 
     X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
                            const std::string& type) override;
