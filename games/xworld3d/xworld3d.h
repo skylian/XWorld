@@ -138,8 +138,12 @@ public:
     bool act(const size_t agent_id, const size_t action);
 
     void joint_control(const size_t agent_id, const size_t joint_id, const x3real delta);
+
+    void next_camera_view();
+
+    void prev_camera_view();
     
-    roboschool::RenderResult render(const size_t agent_id, bool debug);
+    roboschool::RenderResult render(const size_t agent_id);
 
     void step(const int frame_skip);
 

@@ -79,7 +79,7 @@ public:
 
     Entity entity() const { return e_; }
 
-    void set_entity(const Entity& e);
+    virtual void set_entity(const Entity& e) = 0;
 
     void sync_entity_info();
 
@@ -146,6 +146,8 @@ public:
 
     URDFItem& operator=(const URDFItem&) = delete;
 
+    void set_entity(const Entity& e) override;
+
     X3ItemPtr collect_item(const std::map<std::string, X3ItemPtr>& items,
                            const std::string& type) override;
 
@@ -171,12 +173,14 @@ protected:
 
 class MuJoCoItem : public X3Item {
 public:
-    MuJoCoItem(const Entity& e, x3real scale, World& world);
+    MuJoCoItem(const Entity& e, x3real scale, World& world, bool mjcf);
 
     MuJoCoItem(const MuJoCoItem&) = delete;
 
     MuJoCoItem& operator=(const MuJoCoItem&) = delete;
 
+    void set_entity(const Entity& e) override;
+    
     void move_forward() override;
 
     void move_backward() override;
@@ -217,7 +221,7 @@ public:
 
     // Return the image seen by agent.
     // If bird_view is true, a bird view image is also returned.
-    roboschool::RenderResult render(X3Item* item, bool bird_view = false);
+    roboschool::RenderResult render(X3Item* item);
 
     // Camera can be attached to an agent so that the rendered image is centered
     // at the agent
@@ -225,12 +229,21 @@ public:
 
     void detach() { item_ = NULL; }
 
+    void next_view_angle() {
+        view_angle_ = (view_angle_ + 1) % 5;
+    }
+
+    void prev_view_angle() {
+        view_angle_ = (view_angle_ - 1 + 5) % 5;
+    }
+
 private:
     // Update the pose of the camera.
-    void update(bool bird_view);
+    void update();
 
     Camera camera_;
     X3Item* item_;
+    int view_angle_;
 };
 
 }} // simulator::xworld3d

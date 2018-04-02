@@ -7,4 +7,5 @@ PYTHONPATH=../python:$PYTHONPATH \
     --pause_screen=1 \
     --context=1 \
     --task_groups_exclusive=1 \
-    --x3_move_speed=20 
+    --x3_move_speed=5 \
+    --x3_turning_rad=0.05

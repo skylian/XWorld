@@ -77,7 +77,7 @@ class XWorld3DEnv(object):
                     not dirpath.split('/')[-3] in self.grid_types:
                 continue
             for f in files:
-                if f.endswith(".urdf") or f.endswith(".xml"):
+                if f.endswith(".urdf") or f.endswith(".xml") or f.endswith(".sdf"):
                     self.all_object_paths.append(os.path.join(dirpath, f))
         self.set_goal_subtrees([])
         ## read item properties

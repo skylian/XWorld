@@ -106,7 +106,6 @@ private:
     size_t width_;
     size_t img_height_out_;  // training input image size
     size_t img_width_out_;   // training input image size
-    bool bird_view_;
     cv::Mat prev_screen_;  // previous screen for display
     cv::Mat screen_;
 

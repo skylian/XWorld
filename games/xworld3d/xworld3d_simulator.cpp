@@ -53,13 +53,19 @@ public:
 
     void step(const int frame_skip);
 
-    void get_screen_rgb(const size_t agent_id,
-                        cv::Mat& img,
-                        bool bird_view = false);  // get the current screenshot (color)
+    void get_screen_rgb(const size_t agent_id, cv::Mat& img);  // get the current screenshot (color)
 
     std::set<std::string> contact_list(const size_t agent_id);
 
     void joint_control(const size_t agent_id, const size_t joint_id, const x3real delta);
+
+    void next_camera_view() {
+        xworld3d_.next_camera_view();
+    }
+
+    void prev_camera_view() {
+        xworld3d_.prev_camera_view();
+    }
 
 private:
     X3SimulatorImpl(const X3SimulatorImpl&) = delete;
@@ -105,9 +111,9 @@ inline void X3SimulatorImpl::step(const int frame_skip) {
 }
 
 void X3SimulatorImpl::get_screen_rgb(
-        const size_t agent_id, cv::Mat& screen, bool bird_view) {
+        const size_t agent_id, cv::Mat& screen) {
     roboschool::RenderResult render_result =
-            xworld3d_.render(agent_id, bird_view);
+            xworld3d_.render(agent_id);
     std::string render_str = std::get<0>(render_result);
     int img_height = std::get<4>(render_result);
     int img_width = std::get<5>(render_result);
@@ -138,7 +144,6 @@ X3Simulator::X3Simulator(bool print, bool big_screen) :
         height_(0), width_(0),
         img_height_out_(FLAGS_x3_training_img_height),
         img_width_out_(FLAGS_x3_training_img_width),
-        bird_view_(false),
         agent_received_sentences_(0),
         agent_prev_actions_(0),
         keyboard_action_(-1) {
@@ -190,7 +195,7 @@ std::string X3Simulator::conf_file() {
 
 void X3Simulator::show_screen(float reward) {
     cv::Mat img;
-    impl_->get_screen_rgb(active_agent_id_, img, bird_view_);
+    impl_->get_screen_rgb(active_agent_id_, img);
 
     cv::Mat reward_img = get_reward_image(reward);
     cv::Mat img_wo_msg = concat_images(img, reward_img, true);
@@ -365,97 +370,64 @@ float X3Simulator::take_action(const StatePacket& actions) {
                 action = X3NavAction::COLLECT;
                 break;
             case 'z': {
-                bird_view_ = !bird_view_;
+                impl_->next_camera_view();
+                action = X3NavAction::NOOP;
+                break;
+            }
+            case 'Z': {
+                impl_->prev_camera_view();
                 action = X3NavAction::NOOP;
                 break;
             }
             case 'n': {
-                impl_->joint_control(active_agent_id_, 4, 0.1);
+                impl_->joint_control(active_agent_id_, 4, FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'N': {
-                impl_->joint_control(active_agent_id_, 4, -0.1);
+                impl_->joint_control(active_agent_id_, 4, -FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'h': {
-                impl_->joint_control(active_agent_id_, 6, 0.1);
+                impl_->joint_control(active_agent_id_, 5, FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'H': {
-                impl_->joint_control(active_agent_id_, 6, -0.1);
+                impl_->joint_control(active_agent_id_, 5, -FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'y': {
-                impl_->joint_control(active_agent_id_, 8, 0.1);
+                impl_->joint_control(active_agent_id_, 7, FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'Y': {
-                impl_->joint_control(active_agent_id_, 8, -0.1);
+                impl_->joint_control(active_agent_id_, 7, -FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'm': {
-                impl_->joint_control(active_agent_id_, 21, 0.1);
+                impl_->joint_control(active_agent_id_, 8, FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'M': {
-                impl_->joint_control(active_agent_id_, 21, -0.1);
+                impl_->joint_control(active_agent_id_, 8, -FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'j': {
-                impl_->joint_control(active_agent_id_, 23, 0.1);
+                impl_->joint_control(active_agent_id_, 10, FLAGS_x3_joint_delta);
+                impl_->joint_control(active_agent_id_, 13, FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
             case 'J': {
-                impl_->joint_control(active_agent_id_, 23, -0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case ',': {
-                impl_->joint_control(active_agent_id_, 28, 0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case '<': {
-                impl_->joint_control(active_agent_id_, 28, -0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case 'k': {
-                impl_->joint_control(active_agent_id_, 30, 0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case 'K': {
-                impl_->joint_control(active_agent_id_, 30, -0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case '.': {
-                impl_->joint_control(active_agent_id_, 36, 0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case '>': {
-                impl_->joint_control(active_agent_id_, 36, -0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case 'l': {
-                impl_->joint_control(active_agent_id_, 38, 0.1);
-                action = X3NavAction::NOOP; 
-                break;
-            }
-            case 'L': {
-                impl_->joint_control(active_agent_id_, 38, -0.1);
+                impl_->joint_control(active_agent_id_, 10, -FLAGS_x3_joint_delta);
+                impl_->joint_control(active_agent_id_, 13, -FLAGS_x3_joint_delta);
                 action = X3NavAction::NOOP; 
                 break;
             }
@@ -494,7 +466,7 @@ inline int X3Simulator::get_lives() {
 void X3Simulator::get_screen(StatePacket& screen) {
     GameFrame screen_vec;
     cv::Mat img;
-    impl_->get_screen_rgb(active_agent_id_, img, false);
+    impl_->get_screen_rgb(active_agent_id_, img);
     resize_image_to_frame(img, screen_vec,
                           img_height_out_, img_width_out_,
                           FLAGS_color);

@@ -68,7 +68,7 @@ void X3Stadium::load_stadium(const std::string& item_path,
     std::string floor_file = item_path + "/floor/floor.xml";
     std::string stadium_file = item_path + "/floor/stadium/stadium0.obj";
 
-    plist_ = world->load_mjcf(floor_file);
+    plist_ = world->load_sdf_mjcf(floor_file, true);
     for (auto& p : plist_) {
         p.query_position();
     }
@@ -104,6 +104,7 @@ X3World::X3World(const std::string& conf, bool print_conf, bool big_screen) :
         LOG(FATAL) << "world config file error: "
                    << boost::diagnostic_information(ex);
     }
+
 
     CHECK_GT(tree->count("item_path"), 0);
     CHECK_GT(tree->count("map"), 0);
@@ -322,6 +323,14 @@ void X3World::joint_control(const size_t agent_id, const size_t joint_id, const 
     agent_ptr->joint_control(joint_id, delta);
 }
 
+void X3World::next_camera_view() {
+    camera_->next_view_angle();
+}
+
+void X3World::prev_camera_view() {
+    camera_->prev_view_angle();
+}
+
 void X3World::remove_item(X3ItemPtr& item) {
     auto it = items_.find(item->id());
     if (it != items_.end()) {
@@ -344,9 +353,9 @@ void X3World::unregister_item(const X3ItemPtr& item) {
     }
 }
 
-roboschool::RenderResult X3World::render(const size_t agent_id, bool debug) {
+roboschool::RenderResult X3World::render(const size_t agent_id) {
     auto agent_ptr = get_agent(agent_id);
-    return camera_->render(agent_ptr.get(), debug);
+    return camera_->render(agent_ptr.get());
 }
 
 void X3World::step(const int frame_skip) {

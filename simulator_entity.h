@@ -109,6 +109,8 @@ struct Entity {
                         };
         if (endswith(asset_path, ".xml")) {
             model_type = "mjcf";
+        } else if (endswith(asset_path, ".sdf")) {
+            model_type = "sdf";
         } else if (endswith(asset_path, ".urdf")) {
             model_type = "urdf";
         } else {

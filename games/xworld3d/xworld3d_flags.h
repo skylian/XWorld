@@ -24,6 +24,7 @@ DECLARE_double(x3_reaching_distance);
 DECLARE_double(x3_move_speed);
 DECLARE_double(x3_jump_speed);
 DECLARE_double(x3_turning_rad);
+DECLARE_double(x3_joint_delta);
 DECLARE_double(x3_gravity);
 DECLARE_double(x3_time_step);
 //DECLARE_int32(x3_frame_skip);
