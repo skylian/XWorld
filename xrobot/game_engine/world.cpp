@@ -438,62 +438,6 @@ void World::CleanEverything() {
     ResetSimulation();
 }
 
-void World::UpdateAttachObjects(const RobotBaseSPtr& robot) {
-    if(robot->body_data_.attach_to_id < -1) 
-        return;
-
-    if(cameras_size() < 1 || !camera(0)) 
-        return;
-
-    if (robot->body_data_.attach_to_id == -1) {
-        if(auto attach_object_sptr = robot->root_part_->attach_object_.lock()) {
-
-            bool contact = false;
-            std::vector<ContactPoint> contact_points;
-            GetContactPoints(
-                    attach_object_sptr, 
-                    attach_object_sptr->root_part_,
-                    contact_points);
-
-            for (int i = 0; i < contact_points.size(); ++i) {
-                ContactPoint cp = contact_points[i];
-                if(cp.contact_distance < -0.008f) {
-                    robot->Detach();
-                    contact = true;
-                    break;
-                }
-            }
-            // TODO
-            // camera 
-            if(!contact) {
-                float pitch = glm::radians(camera(0)->pre_pitch_);
-                glm::vec3 offset = camera(0)->offset_;
-
-                btTransform mat_rc_r;
-                btQuaternion cam_q(pitch, 0, 0);
-                mat_rc_r.setIdentity();
-                mat_rc_r.setRotation(cam_q);
-
-                btTransform mat_rc_t;
-                mat_rc_t.setIdentity();
-                mat_rc_t.setOrigin(btVector3(0,offset.y,0));
-
-                btTransform new_transform = 
-                        robot->root_part_->object_position_;
-                btTransform attach_transform = 
-                        robot->body_data_.attach_transform;
-                btTransform object_orn = 
-                        robot->body_data_.attach_orientation;
-                btTransform obj_tr = 
-                        mat_rc_t * new_transform * mat_rc_r * attach_transform;
-
-                obj_tr.setRotation(object_orn.getRotation());
-                SetTransformation(attach_object_sptr, obj_tr);
-            }
-        } 
-    }
-}
-
 void World::FixLockedObjects(const RobotBaseSPtr& robot) {
     if(auto anim_robot = std::dynamic_pointer_cast<RobotWithAnimation>(robot)) {
         if(anim_robot->GetLock()) {
@@ -565,14 +509,21 @@ void World::BulletStep(const int skip_frames)
 
     for (auto& kv : id_to_robot_) {
         auto robot = kv.second;
-        if (!robot || robot->is_recycled() || robot->is_hiding()) 
+        if (!robot || robot->is_recycled() || robot->is_hiding()) {
             continue;
+        }
 
         // Check Object at Camera Center is Interactable
         if(get_highlight_center() == 0)
             QueryInteractable(robot);
 
-        UpdateAttachObjects(robot);
+        if (robot->body_data_.attach_to_id < -1
+            || cameras_size() < 1
+            || !camera(0)) {
+            continue;
+        }
+
+        robot->UpdateAttachment(camera(0)->pre_pitch_, camera(0)->offset_.y);
         FixLockedObjects(robot);
 
         for (auto& joint : robot->joints_) {
@@ -649,24 +600,6 @@ void World::QueryInteractable(const std::shared_ptr<RobotBase>& robot) {
 
 void World::BulletInit(const float gravity, const float timestep) {
     init(gravity, timestep);    
-}
-
-void World::SetTransformation(const RobotBaseWPtr& robot, const btTransform& tr) {
-
-    if (auto robot_sptr = robot.lock()) {
-        xScalar p[3];
-        p[0] = tr.getOrigin()[0];
-        p[1] = tr.getOrigin()[1];
-        p[2] = tr.getOrigin()[2];
-
-        xScalar q[4];
-        q[0] = tr.getRotation()[0];
-        q[1] = tr.getRotation()[1];
-        q[2] = tr.getRotation()[2];
-        q[3] = tr.getRotation()[3];
-
-        set_pose(client_, robot_sptr->id(), p, q);
-    }
 }
 
 void World::GetRootClosestPoints(

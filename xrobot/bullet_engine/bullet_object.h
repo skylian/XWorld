@@ -63,15 +63,20 @@ public:
             const double z, 
             const int flags = EF_LINK_FRAME);
 
+    void update_attachment(
+            BulletObject* attach_obj, const float pitch, const float offset);
+
     void detach() { attach_transform_ = btTransform(); }
 
     glm::mat4 translation_matrix() const;
 
     glm::mat4 local_inertial_frame() const;
 
-    void pose(glm::vec3& pos, glm::vec4& quat);
+    glm::vec3 position() const;
 
-    void pose(btVector3& pos, btQuaternion& quat);
+    void pose(glm::vec3& pos, glm::vec4& quat) const;
+
+    void pose(btVector3& pos, btQuaternion& quat) const;
 
 public:
     int bullet_link_id_;

@@ -18,17 +18,10 @@
 #include "bullet_engine/bullet_world.h"
 #include "render_engine/model.h"
 #include "render_engine/render_world.h"
-
+#include "geometry.h"
 #include "inventory.h"
 
 namespace xrobot {
-
-// TODO: Right now xScalar cannot be float
-#ifdef USE_DOUBLE_PRECISION
-typedef double xScalar;
-#else
-typedef float xScalar;
-#endif
 
 class Inventory;
 class RobotBase;
@@ -133,6 +126,22 @@ public:
     glm::mat4 local_inertial_frame() const override;
 };
 
+struct RobotData {
+	//btVector3 scale = btVector3(1.0f, 1.0f, 1.0f);
+	xVector3 scale = {1.0f, 1.0f, 1.0f};
+    bool fixed = false;
+    bool concave = false;
+    double mass = 0.0f; // Only for .Obj
+    std::string label = "unlabeled";
+    bool pickable = false;
+    std::string urdf_name = "";
+    std::string path = "";
+    int body_uid = -1;
+    int attach_to_id = -2; // -1 is used by root
+    xTransform attach_transform;
+    xTransform attach_orientation; 
+};
+
 class RobotBase : public render_engine::RenderBody,
                   public bullet_engine::BulletBody,
                   public std::enable_shared_from_this<RobotBase> {
@@ -189,6 +198,8 @@ public:
         recycle_ = false;
         hide_ = false;
     }
+
+    void reset_move() { first_move_ = true; }
 
     virtual void Move(const xScalar translate, const xScalar rotate);
 
@@ -252,6 +263,7 @@ public:
 
     size_t size() const override { return parts_.size(); }
 
+    void UpdateAttachment(const float pitch, const float offset);
     void attach_camera(const glm::vec3& offset,
                        const float pitch,
                        glm::vec3& loc,
@@ -261,12 +273,15 @@ public:
 
     void hide(const bool hide) override;
 
-    int id() { return body_data_.body_uid; }
-
     WorldWPtr bullet_world_;
+    RobotData body_data_;
     std::shared_ptr<Object> root_part_;
     std::vector<std::shared_ptr<Object>> parts_;
     std::vector<std::shared_ptr<Joint>> joints_;
+    xQuaternion orientation_;
+    xQuaternion base_orientation_;
+    double angle_;
+    bool first_move_;
 
 protected:
     void load_robot_joints(const std::string& filename);
@@ -434,8 +449,6 @@ public:
             std::vector<render_engine::ModelDataSPtr>& model_list,
             bool& reset);
 
-    void UpdateAttachObjects(const RobotBaseSPtr& robot);
-
     void FixLockedObjects(const RobotBaseSPtr& robot);
 
     void QueryPose(RobotBaseSPtr& robot);
@@ -460,8 +473,6 @@ public:
             const std::vector<Ray>& rays, 
             std::vector<RayTestInfo>& result,
             const int num_threads = 0);
-
-    void SetTransformation(const RobotBaseWPtr& robot, const btTransform& tr);
 
     void GetRootClosestPoints(
             const RobotBaseWPtr& robot_in, 

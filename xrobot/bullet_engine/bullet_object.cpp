@@ -167,12 +167,17 @@ glm::mat4 BulletObject::local_inertial_frame() const {
     return TransformToMat4(object_local_inertial_frame_);
 }
 
-void BulletObject::pose(btVector3& pos, btQuaternion& quat) {
+glm::vec3 BulletObject::position() const {
+    auto p = object_position_.getOrigin();
+    return glm::vec3(p[0], p[1], p[2]);
+}
+
+void BulletObject::pose(btVector3& pos, btQuaternion& quat) const {
     pos = object_position_.getOrigin();
     quat = object_position_.getRotation();
 }
 
-void BulletObject::pose(glm::vec3& pos, glm::vec4& quat) {
+void BulletObject::pose(glm::vec3& pos, glm::vec4& quat) const {
     auto p = object_position_.getOrigin();
     auto q = object_position_.getRotation();
     pos[0] = p[0];

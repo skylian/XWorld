@@ -8,30 +8,9 @@
 namespace xrobot {
 namespace bullet_engine {
 
-struct BulletBodyData {
-	//btVector3 scale = btVector3(1.0f, 1.0f, 1.0f);
-	btVector3 scale = {1.0f, 1.0f, 1.0f};
-    bool fixed = false;
-    bool concave = false;
-    double mass = 0.0f; // Only for .Obj
-    std::string label = "unlabeled";
-    bool pickable = false;
-    std::string urdf_name = "";
-    std::string path = "";
-    int body_uid = -1;
-    int attach_to_id = -2; // -1 is used by root
-    btTransform attach_transform;
-    btTransform attach_orientation; 
-};
-
 class BulletBody {
 public:
-    BulletBody() : 
-            body_data_(BulletBodyData()),
-            orientation_(btVector3(0,1,0),0),
-            base_orientation_(),
-            angle_(0),
-            first_move_(true) {}
+    BulletBody() : root_obj_(NULL) {}
 
     virtual ~BulletBody() {}
 
@@ -47,13 +26,15 @@ public:
             const bool use_multibody,
             const bool concave);
 
-    void load_root_part(const ClientHandle client, BulletObject* root_part);
+    void load_root_part(const ClientHandle client, BulletObject* root);
 
     bool load_part(
             const ClientHandle client,
             const int part_id,
             BulletJoint* joint,
             BulletObject* part);
+
+    int id() const { return body_uid_; }
 
     int get_visual_shape_info(const ClientHandle client);
 
@@ -68,7 +49,6 @@ public:
 
     bool load_obj(
             const ClientHandle client,
-            BulletObject* root_part,
             const std::string& filename,
             const glm::vec3& pos,
             const glm::vec4& quat,
@@ -89,29 +69,6 @@ public:
                     const int id,
                     b3LinkState& state);
 
-    void reset_move() { first_move_ = true; }
-
-    void move(
-            const double move,
-            const double rot,
-            BulletObject* root_part,
-            double* p,
-            double* q,
-            double* prev_q,
-            double* prev_o);
-
-    void attach(BulletObject* root_part, const BulletObject* target_root,
-            const float pitch, const glm::vec3& offset);
-
-    void attach_camera(
-            const BulletObject* part,
-            const glm::vec3& offset,
-            const float pitch,
-            glm::vec3& loc,
-            glm::vec3& front,
-            glm::vec3& right,
-            glm::vec3& up);
-
     void inverse_kinematics(
             const ClientHandle client,
             const int id,
@@ -129,14 +86,10 @@ public:
             std::vector<ContactPoint>& points,
             const int link_id  = -1);
 
-
 public:
-    BulletBodyData body_data_;
+    BulletObject* root_obj_ = NULL;
+    int body_uid_;
     b3VisualShapeInformation visual_shape_info_;
-    btQuaternion orientation_;
-    btQuaternion base_orientation_;
-    double angle_;
-    bool first_move_;
 };
 
 

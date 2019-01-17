@@ -41,23 +41,17 @@ bool BulletBody::load_urdf(
         return false;
     }
 
-    body_data_.scale = btVector3(scale, scale, scale);
-    body_data_.fixed = fixed_base;
-    body_data_.concave = concave;
-    body_data_.mass = 0.0f;
-    body_data_.urdf_name = filename;
-    body_data_.path = filename;
-    body_data_.body_uid = b3GetStatusBodyIndex(status_handle);
+    body_uid_ = b3GetStatusBodyIndex(status_handle);
 
     return true;
 }
 
-void BulletBody::load_root_part(
-        const ClientHandle client, BulletObject* root_part) {
+void BulletBody::load_root_part(const ClientHandle client, BulletObject* root) {
     b3BodyInfo info;
-    b3GetBodyInfo(client, body_data_.body_uid, &info);
-    root_part->bullet_link_id_ = -1;
-    root_part->object_name_ = info.m_baseName;
+    b3GetBodyInfo(client, id(), &info);
+    root_obj_ = root;
+    root_obj_->bullet_link_id_ = -1;
+    root_obj_->object_name_ = info.m_baseName;
 }
 
 bool BulletBody::load_part(
@@ -68,7 +62,7 @@ bool BulletBody::load_part(
     
     bool keep_joint = false;
     struct b3JointInfo info;
-    b3GetJointInfo(client, body_data_.body_uid, part_id, &info);
+    b3GetJointInfo(client, id(), part_id, &info);
     if (info.m_jointType == kRevolute || info.m_jointType == kPrismatic) {
         joint->bullet_joint_id_ = part_id;
         joint->joint_name_ = info.m_jointName;
@@ -92,7 +86,7 @@ bool BulletBody::load_part(
 
 int BulletBody::get_visual_shape_info(const ClientHandle client) {
     CommandHandle cmd_handle =
-            b3InitRequestVisualShapeInformation(client, body_data_.body_uid);
+            b3InitRequestVisualShapeInformation(client, id());
     StatusHandle status_handle =
             b3SubmitClientCommandAndWaitStatus(client, cmd_handle);
     int status_type = b3GetStatusType(status_handle);
@@ -148,7 +142,6 @@ int BulletBody::get_visual_shape(
 
 bool BulletBody::load_obj(
         const ClientHandle client,
-        BulletObject* root_part,
         const std::string& filename,
         const glm::vec3& pos,
         const glm::vec4& quat,
@@ -176,24 +169,13 @@ bool BulletBody::load_obj(
     }
 
     b3BodyInfo info;
-    b3GetBodyInfo(client, body_data_.body_uid, &info);
+    b3GetBodyInfo(client, id(), &info);
 
-    std::string filename_with_scale = 
-            filename + ":" + 
-            std::to_string(scale[0]) + ":" + 
-            std::to_string(scale[1]) + ":" + 
-            std::to_string(scale[2]);
+    body_uid_ = b3GetStatusBodyIndex(status_handle);
 
-    body_data_.scale = btVector3(scale[0], scale[1], scale[2]);
-    body_data_.fixed = false;
-    body_data_.concave = concave;
-    body_data_.mass = mass;
-    body_data_.urdf_name = filename_with_scale;
-    body_data_.path = filename;
-    body_data_.body_uid = b3GetStatusBodyIndex(status_handle);
+    root_obj_->object_name_ = info.m_baseName;
+    root_obj_->bullet_link_id_ = -1;
 
-    root_part->object_name_ = info.m_baseName;
-    root_part->bullet_link_id_ = -1;
     return true;
 }
 
@@ -204,7 +186,7 @@ void BulletBody::remove_from_bullet(const ClientHandle client, const int id) {
 
 void BulletBody::update_joints(const ClientHandle client) {
     CommandHandle cmd_handle =
-            b3JointControlCommandInit2(client, body_data_.body_uid, kVelocity);
+            b3JointControlCommandInit2(client, id(), kVelocity);
     b3SubmitClientCommandAndWaitStatus(client, cmd_handle);
 }
 
@@ -213,7 +195,7 @@ void BulletBody::query_pose(const ClientHandle client,
                             const double** q,
                             const double** q_dot) {
     CommandHandle cmd_handle =
-            b3RequestActualStateCommandInit(client, body_data_.body_uid);
+            b3RequestActualStateCommandInit(client, id());
     StatusHandle status_handle = 
             b3SubmitClientCommandAndWaitStatus(client, cmd_handle);
 
@@ -233,7 +215,7 @@ void BulletBody::query_link(const ClientHandle client,
                             const int id,
                             b3LinkState& state) {
     CommandHandle cmd_handle =
-            b3RequestActualStateCommandInit(client, body_data_.body_uid);
+            b3RequestActualStateCommandInit(client, id());
     b3RequestActualStateCommandComputeLinkVelocity(cmd_handle, kComputeVelocity);
     StatusHandle status_handle = 
             b3SubmitClientCommandAndWaitStatus(client, cmd_handle);
@@ -241,108 +223,8 @@ void BulletBody::query_link(const ClientHandle client,
     b3GetLinkState(client, status_handle, id, &state);   
 }
 
-void BulletBody::move(
-        const double move,
-        const double rot,
-        BulletObject* root_part,
-        double* p,
-        double* q,
-        double* prev_q,
-        double* prev_o) {
-
-    btVector3 pos;
-    btQuaternion quat;
-    root_part->pose(pos, quat);
-
-    if (first_move_) {
-        angle_ = 0;
-        base_orientation_ = quat;
-        first_move_ = false;
-        orientation_ = btQuaternion(btVector3(0, 1, 0), 0);
-    }
-
-    prev_o[0] = orientation_[0];
-    prev_o[1] = orientation_[1];
-    prev_o[2] = orientation_[2];
-    prev_o[3] = orientation_[3];
-
-    orientation_ = orientation_ * btQuaternion(btVector3(0, 1, 0), rot);
-    angle_ += rot;
-
-    btVector3 pos_new = pos + btTransform(orientation_) * btVector3(move, 0, 0);
-    btQuaternion orn_new = btQuaternion(btVector3(0, 1, 0), angle_) * base_orientation_;
-    
-    p[0] = pos_new[0];
-    p[1] = pos_new[1];
-    p[2] = pos_new[2];
-    q[0] = orn_new[0];
-    q[1] = orn_new[1];
-    q[2] = orn_new[2];
-    q[3] = orn_new[3];
-    prev_q[0] = quat[0];
-    prev_q[1] = quat[1];
-    prev_q[2] = quat[2];
-    prev_q[3] = quat[3];
-}
-
-void BulletBody::attach(BulletObject* root_part, const BulletObject* target_root,
-        const float pitch, const glm::vec3& offset) {
-
-    btTransform mat_rc_r;
-    btQuaternion cam_q(pitch, 0, 0);
-    mat_rc_r.setIdentity();
-    mat_rc_r.setRotation(cam_q);
-
-    btTransform mat_rc_t;
-    mat_rc_t.setIdentity();
-    mat_rc_t.setOrigin(btVector3(0,offset.y,0));
-
-    btTransform object_tranform = target_root->object_position_;
-    btTransform root_transform = root_part->object_position_;
-
-    btTransform root_to_object = mat_rc_r.inverse() *
-        root_transform.inverse() * mat_rc_t.inverse() * object_tranform;
-
-    body_data_.attach_transform = root_to_object;
-    body_data_.attach_orientation = object_tranform;
-}
-
-void BulletBody::attach_camera(
-        const BulletObject* part,
-        const glm::vec3& offset,
-        const float pitch,
-        glm::vec3& loc,
-        glm::vec3& front,
-        glm::vec3& right,
-        glm::vec3& up) {
-    btTransform pose = part->object_position_;
-    auto base_orientation = pose.getBasis();
-    btVector3 base_front = base_orientation * btVector3(1, 0, 0); 
-
-    // TODO: this part of codes are just used to compute the offset of camera
-    // relative to the body, i.e., camera_aim.
-    glm::vec3 f = glm::normalize(
-            glm::vec3(base_front[0], base_front[1], base_front[2]));
-    glm::vec3 r = glm::normalize(glm::cross(f, glm::vec3(0,-1,0)));
-    glm::vec3 u = glm::normalize(glm::cross(f, r));
-    glm::vec3 camera_aim(f*offset.x + u*offset.y + r*offset.z);
-
-    btMatrix3x3 pre_orientation;
-    pre_orientation.setIdentity();
-    pre_orientation.setEulerYPR(0, glm::radians(pitch), 0);
-    base_front = base_orientation * pre_orientation * btVector3(1, 0, 0); 
-    front = glm::normalize(glm::vec3(base_front[0], base_front[1], base_front[2]));
-    right = glm::normalize(glm::cross(front, glm::vec3(0,-1,0)));
-    up = glm::normalize(glm::cross(front, right));
-
-    auto base_position = pose.getOrigin();
-    loc = glm::vec3(base_position[0], base_position[1], base_position[2]) 
-          + camera_aim;
-}
-
 void BulletBody::inverse_kinematics(
         const ClientHandle client,
-        const int id,
         const int end_index,
         const glm::vec3& target_pos,
         const glm::vec4& target_quat,
@@ -350,15 +232,15 @@ void BulletBody::inverse_kinematics(
         double* output_joint_pos,
         int& num_poses) {
     const int solver = 0;
-    const int num_joints = b3GetNumJoints(client, id);
-    const int dof = b3ComputeDofCount(client, id);
+    const int num_joints = b3GetNumJoints(client, id());
+    const int dof = b3ComputeDofCount(client, id());
 
     double p[3] = {target_pos[0], target_pos[1], target_pos[2]};
     double q[4] =
             {target_quat[0], target_quat[1], target_quat[2], target_quat[3]};
 
     CommandHandle cmd_handle =
-            b3CalculateInverseKinematicsCommandInit(client, id);
+            b3CalculateInverseKinematicsCommandInit(client, id());
     b3CalculateInverseKinematicsSelectSolver(cmd_handle, solver);
 
     b3CalculateInverseKinematicsAddTargetPositionWithOrientation(
@@ -382,7 +264,7 @@ void BulletBody::get_closest_points(
     struct b3ContactInformation contact_point_data;
     CommandHandle cmd_handle = b3InitClosestDistanceQuery(client);
 
-    b3SetClosestDistanceFilterBodyA(cmd_handle, body_data_.body_uid);
+    b3SetClosestDistanceFilterBodyA(cmd_handle, id());
     b3SetClosestDistanceThreshold(cmd_handle, 0.f);
     b3SubmitClientCommandAndWaitStatus(client, cmd_handle);
     
@@ -429,7 +311,7 @@ void BulletBody::get_contact_points(const ClientHandle client,
     struct b3ContactInformation contact_point_data;
     CommandHandle cmd_handle = b3InitRequestContactPointInformation(client);
 
-    b3SetContactFilterBodyA(cmd_handle, body_data_.body_uid);
+    b3SetContactFilterBodyA(cmd_handle, id());
 
     if (link_id >= -1) {
         b3SetContactFilterLinkA(cmd_handle, link_id);

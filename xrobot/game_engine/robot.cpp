@@ -6,164 +6,15 @@ namespace xrobot {
 using namespace render_engine;
 using namespace bullet_engine;
 
-Joint::Joint() : BulletJoint(),
-                 bullet_world_(),
-                 bullet_robot_() {}
-
-Joint::~Joint() {}
-
-void Joint::EnableJointSensor(const bool enable) {
-    auto robot = wptr_to_sptr(bullet_robot_);
-    auto world = wptr_to_sptr(bullet_world_);
-    enable_sensor(world->client_, robot->id(), enable);
-}
-
-void Joint::GetJointMotorState(glm::vec3& force, glm::vec3& torque) {
-    auto robot = wptr_to_sptr(bullet_robot_);
-    auto world = wptr_to_sptr(bullet_world_);
-    get_motor_state(world->client_, robot->id(), force, torque);
-}
-
-void Joint::ResetJointState(const xScalar pos, const xScalar vel) {
-    auto robot = wptr_to_sptr(bullet_robot_);
-    auto world = wptr_to_sptr(bullet_world_);
-    reset_state(world->client_, robot->id(), pos, vel);
-}
-
-void Joint::SetJointMotorControlTorque(const xScalar torque) {
-    auto robot = wptr_to_sptr(bullet_robot_);
-    auto world = wptr_to_sptr(bullet_world_);
-    set_motor_control_torque(world->client_, robot->id(), torque);
-}
-
-void Joint::SetJointMotorControlVelocity(const xScalar speed,
-                                         const xScalar k_d,
-                                         const xScalar max_force) {
-    
-    auto robot = wptr_to_sptr(bullet_robot_);
-    auto world = wptr_to_sptr(bullet_world_);
-    set_motor_control_velocity(
-            world->client_, robot->id(), speed, k_d, max_force);
-}
-
-void Joint::SetJointMotorControlPosition(
-        const xScalar target,
-        const xScalar k_p,
-        const xScalar k_d,
-        const xScalar max_force) {
-    auto robot = wptr_to_sptr(bullet_robot_);
-    auto world = wptr_to_sptr(bullet_world_);
-    set_motor_control_position(
-            world->client_, robot->id(), target, k_p, k_d, max_force);
-}
-
-Object::Object() : RenderPart(),
-                   BulletObject(),
-                   bullet_world_(),
-                   body_uid_(-1) {}
-
-void Object::Sleep() {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::sleep(world->client_, id());
-}
-
-void Object::EnableSleeping() {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::enable_sleeping(world->client_, id());
-}
-
-void Object::DisableSleeping() {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::disable_sleeping(world->client_, id());
-}
-
-void Object::Wake() {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::wake(world->client_, id());
-}
-
-void Object::GetMass(xScalar& mass) {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::get_mass(world->client_, id(), mass);
-}
-
-void Object::SetMass(const xScalar mass) {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_mass(world->client_, id(), mass);
-}
-
-void Object::SetStatic() {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::get_mass(world->client_, id(), object_mass_original_);
-    BulletObject::change_mass(world->client_, id(), 0.0f);
-}
-
-void Object::RecoverFromStatic() {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_mass(
-            world->client_, id(), object_mass_original_);
-}
-
-void Object::GetAABB(glm::vec3& aabb_min, glm::vec3& aabb_max) {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::get_AABB(world->client_, id(), aabb_min, aabb_max);
-}
-
-void Object::ChangeLinearDamping(const xScalar damping) {
-    assert(damping >= 0);
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_linear_damping(world->client_, id(), damping);
-}
-
-void Object::ChangeAngularDamping(const xScalar damping) {
-    assert(damping >= 0);
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_angular_damping(world->client_, id(), damping);
-}
-
-void Object::ChangeLateralFriction(const xScalar friction) {
-    assert(friction >= 0);
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_lateral_friction(world->client_, id(), friction);
-}
-
-void Object::ChangeSpinningFriction(const xScalar friction) {
-    assert(friction >= 0);
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_spinning_friction(world->client_, id(), friction);
-}
-
-void Object::ChangeRollingFriction(xScalar friction) {
-    assert(friction >= 0);
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::change_rolling_friction(world->client_, id(), friction);
-}
-
-void Object::ApplyForce(
-        const xScalar x, const xScalar y, const xScalar z, const int flags) {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::apply_force(world->client_, id(), x, y, z, flags);
-}
-
-void Object::ApplyTorque(
-        const xScalar x, const xScalar y, const xScalar z, const int flags) {
-    auto world = wptr_to_sptr(bullet_world_);
-    BulletObject::apply_torque(world->client_, id(), x, y, z, flags);
-}
-
-glm::mat4 Object::translation_matrix() const {
-    return BulletObject::translation_matrix();
-}
-
-glm::mat4 Object::local_inertial_frame() const {
-    return BulletObject::local_inertial_frame();
-}
-
 RobotBase::RobotBase(const WorldWPtr& bullet_world) :
         bullet_world_(bullet_world),
         root_part_(nullptr),
         parts_(),
-        joints_() {}
+        joints_(),
+        orientation_(xVector3(0,1,0), 0),
+        base_orientation_(),
+        angle_(0),
+        first_move_(true) {}
 
 void RobotBase::LoadURDFFile(
         const std::string& filename,
@@ -188,15 +39,20 @@ void RobotBase::LoadURDFFile(
             self_collision,
             use_multibody,
             concave);
+    body_data_.scale = xVector3(scale, scale, scale);
+    body_data_.fixed = fixed_base;
+    body_data_.concave = concave;
+    body_data_.mass = 0.0f;
+    body_data_.urdf_name = filename;
+    body_data_.path = filename;
     body_data_.label = label;
 
     load_robot_joints(filename);
-
     load_robot_shapes(scale);
 
     // TODO: return shared_ptr of RobotBase to caller (i.e. World) and let
     // caller handle this
-    bullet_world->id_to_robot_[body_data_.body_uid] = shared_from_this();
+    bullet_world->id_to_robot_[id()] = shared_from_this();
 
     reuse();
 }
@@ -207,10 +63,10 @@ void RobotBase::load_robot_joints(const std::string &filename) {
     root_part_ = std::make_shared<Object>();
     load_root_part(bullet_world->client_, root_part_.get());
     root_part_->bullet_world_ = bullet_world;
-    root_part_->set_id(body_data_.body_uid);
+    root_part_->set_id(id());
     root_part_->EnableSleeping();
 
-    int num_joints = get_num_joints(bullet_world->client_, body_data_.body_uid);
+    int num_joints = get_num_joints(bullet_world->client_, id());
     joints_.resize(num_joints);
     parts_.resize(num_joints);
 
@@ -228,7 +84,7 @@ void RobotBase::load_robot_joints(const std::string &filename) {
         }
 
         parts_[c]->bullet_world_ = bullet_world;
-        parts_[c]->set_id(body_data_.body_uid);
+        parts_[c]->set_id(id());
     }
 }
 
@@ -292,19 +148,32 @@ void RobotBase::LoadOBJFile(
         const bool concave) {
     auto bullet_world = wptr_to_sptr(bullet_world_);
 
-    root_part_ = std::make_shared<Object>();
     load_obj(
              bullet_world->client_,
-             root_part_.get(),
              filename,
              pos,
              quat,
              scale,
              mass,
              concave);
-    root_part_->bullet_world_ = bullet_world;
-    root_part_->set_id(body_data_.body_uid);
+
+    std::string filename_with_scale = 
+            filename + ":" + 
+            std::to_string(scale[0]) + ":" + 
+            std::to_string(scale[1]) + ":" + 
+            std::to_string(scale[2]);
+
+    body_data_.scale = xVector3(scale[0], scale[1], scale[2]);
+    body_data_.fixed = false;
+    body_data_.concave = concave;
+    body_data_.mass = mass;
+    body_data_.urdf_name = filename_with_scale;
+    body_data_.path = filename;
     body_data_.label = label;
+
+    root_part_ = std::make_shared<Object>();
+    root_part_->bullet_world_ = bullet_world;
+    root_part_->set_id(id());
 
     bool reset = true;
     auto model_data = bullet_world->FindInCache(
@@ -327,15 +196,15 @@ void RobotBase::LoadOBJFile(
        
     // TODO: return shared_ptr of RobotBase to caller (i.e. World) and let
     // caller handle this
-    bullet_world->id_to_robot_[body_data_.body_uid] = shared_from_this();
+    bullet_world->id_to_robot_[id()] = shared_from_this();
 
     reuse();
 }
 
 void RobotBase::RemoveRobotFromBullet() {
-    if (body_data_.body_uid < 0) return;
+    if (id() < 0) return;
     auto bullet_world = wptr_to_sptr(bullet_world_);
-    remove_from_bullet(bullet_world->client_, body_data_.body_uid);
+    remove_from_bullet(bullet_world->client_, id());
 }
 
 void RobotBase::do_recycle(const std::string& key) {
@@ -345,7 +214,7 @@ void RobotBase::do_recycle(const std::string& key) {
     bullet_world->recycle_robot_map_[key].push_back(shared_from_this());
     body_data_.attach_to_id = -2;
     // Remove Label
-    bullet_world->RemoveObjectWithLabel(body_data_.body_uid);
+    bullet_world->RemoveObjectWithLabel(id());
     //bullet_world->id_to_robot_[key] = nullptr;
 
 }
@@ -358,7 +227,7 @@ void RobotBase::recycle() {
 }
 
 void RobotBase::Sleep() {
-    if (body_data_.body_uid < 0) return;
+    if (id() < 0) return;
 
     if (root_part_) {
         root_part_->Sleep();
@@ -372,7 +241,7 @@ void RobotBase::Sleep() {
 }
 
 void RobotBase::Wake() {
-    if(body_data_.body_uid < 0) return;
+    if(id() < 0) return;
 
     if (root_part_) {
         root_part_->Wake();
@@ -386,7 +255,7 @@ void RobotBase::Wake() {
 }
 
 void RobotBase::DisableSleeping() {
-    if(body_data_.body_uid < 0) return;
+    if(id() < 0) return;
 
     if (root_part_) {
         root_part_->DisableSleeping();
@@ -405,14 +274,27 @@ void RobotBase::DisableSleeping() {
 void RobotBase::Move(const xScalar translate, const xScalar rotate) {
     assert(root_part_);
     auto bullet_world = wptr_to_sptr(bullet_world_);
-    xScalar pos[3];
-    xScalar quat[4];
-    xScalar prev_quat[4];
-    xScalar prev_orn[4];
-    xScalar prev_angle = angle_;
-    move(translate, rotate, root_part_.get(), pos, quat, prev_quat, prev_orn);
 
-    set_pose(bullet_world->client_, body_data_.body_uid, pos, quat);
+    xVector3 pos;
+    xQuaternion prev_quat;
+    root_part_->pose(pos, prev_quat);
+
+    if (first_move_) {
+        angle_ = 0;
+        base_orientation_ = prev_quat;
+        orientation_ = xQuaternion(xVector3(0, 1, 0), 0);
+        first_move_ = false;
+    }
+
+    xScalar prev_angle = angle_;
+    xQuaternion prev_orn = orientation_;
+ 
+    orientation_ = orientation_ * xQuaternion(xVector3(0, 1, 0), rot);
+    angle_ += rot;
+    pos = pos + orientation_ * xVector3(translate, 0, 0);
+    auto quat = xQuaternion(xVector3(0, 1, 0), angle_) * base_orientation_;
+    
+    set_pose(bullet_world->client_, id(), pos, quat);
     bullet_world->BulletStep();
 
     bool step = false;
@@ -441,17 +323,13 @@ void RobotBase::Move(const xScalar translate, const xScalar rotate) {
         }
     }
 
-    if(step) {
-
-        if(fabs(rotate) > 0.0f) {
+    if (step) {
+        if (fabs(rotate) > 0.0f) {
             angle_ = prev_angle;
-            orientation_[0] = prev_orn[0];
-            orientation_[1] = prev_orn[1];
-            orientation_[2] = prev_orn[2];
-            orientation_[3] = prev_orn[3];
+            orientation_ = prev_orn;
         }
 
-        set_pose(bullet_world->client_, body_data_.body_uid, pos, prev_quat);
+        set_pose(bullet_world->client_, id(), pos, prev_quat);
         bullet_world->BulletStep();
     }
 }
@@ -476,7 +354,7 @@ void RobotBase::SetJointVelocity(
     assert(joint_id >= 0 && joint_id < joints_.size());
     auto bullet_world = wptr_to_sptr(bullet_world_);
     joints_[joint_id]->set_motor_control_velocity(
-            bullet_world->client_, body_data_.body_uid, speed, k_d, max_force);
+            bullet_world->client_, id(), speed, k_d, max_force);
 }
 
 void RobotBase::SetJointPosition(
@@ -489,7 +367,7 @@ void RobotBase::SetJointPosition(
     auto bullet_world = wptr_to_sptr(bullet_world_);
     joints_[joint_id]->set_motor_control_position(
             bullet_world->client_,
-            body_data_.body_uid,
+            id(),
             target,
             k_d,
             k_p,
@@ -501,7 +379,7 @@ void RobotBase::ResetJointState(
     assert(joint_id >= -1 && joint_id < joints_.size());
     auto bullet_world = wptr_to_sptr(bullet_world_);
     joints_[joint_id]->reset_state(
-            bullet_world->client_, body_data_.body_uid, pos, vel);
+            bullet_world->client_, id(), pos, vel);
 }
 
 std::string RobotBase::PickUp(
@@ -562,13 +440,13 @@ bool RobotBase::occupy_test(
     for (auto& kv : world->id_to_robot_) {
         auto body = kv.second;
         auto part = body->root_part_;
-        if (part &&
-            !body->is_recycled() &&
-            part->id() != item->body_data_.body_uid &&
-            part->id() != body->body_data_.body_uid &&
-            body->body_data_.label!= "Wall" &&
-            body->body_data_.label!= "Floor"&&
-            body->body_data_.label!= "Ceiling") {
+        if (part
+            && !body->is_recycled()
+            && part->id() != item->id()
+            && part->id() != body->id()
+            && body->body_data_.label!= "Wall"
+            && body->body_data_.label!= "Floor" 
+            && body->body_data_.label!= "Ceiling") {
 
             glm::vec3 aabb_min1, aabb_max1;
             part->GetAABB(aabb_min1, aabb_max1);
@@ -628,7 +506,7 @@ std::string RobotBase::PutDown(
                 q[3] = quat_temp[3];
 
                 set_pose(bullet_world->client_,
-                         item->body_data_.body_uid,
+                         item->id(),
                          p,
                          q);                
 
@@ -647,7 +525,7 @@ std::string RobotBase::PutDown(
                     p[2] = pos.z;
 
                     set_pose(bullet_world->client_,
-                             item->body_data_.body_uid,
+                             item->id(),
                              p,
                              q);
                     bullet_world->BulletStep();
@@ -678,7 +556,7 @@ std::string RobotBase::Rotate(
             && item->body_data_.label != "Wall" 
             && item->body_data_.label != "Floor"
             && item->body_data_.label != "Ceiling") {
-            rotate(bullet_world->client_, item->body_data_.body_uid, angle);
+            rotate(bullet_world->client_, item->id(), angle);
             bullet_world->BulletStep();
 
             return item->body_data_.label;
@@ -693,10 +571,8 @@ void RobotBase::Detach() {
         printf("Nothing to detach!\n");
         return;
     }
-
-    body_data_.attach_transform = btTransform();
-
     body_data_.attach_to_id = -2;
+    body_data_.attach_transform = xTransform();
 }
 
 void RobotBase::AttachTo(const RobotBaseWPtr& object) {
@@ -736,7 +612,74 @@ void RobotBase::AttachTo(const RobotBaseWPtr& object) {
     auto part = (id < 0 ? root_part_ : parts_[id]);
     part->attach_object_ = object;
 
-    attach(root_part_.get(), object_sptr->root_part_.get(), pitch, offset);
+    attach_two_parts(root_part_, object_sptr->root_part_, pitch, offset.y);
+}
+
+void RobotBase::attach_two_parts(
+        const BulletObject* attacher,
+        const BulletObject* attachee,
+        const float pitch,
+        const float offset) {
+
+    xTransform Tr;
+    xQuaternion cam_q(pitch, 0, 0);
+    Tr.setIdentity();
+    Tr.setRotation(cam_q);
+
+    xTransform Tt;
+    Tt.setIdentity();
+    Tt.setOrigin(xVector3(0, offset, 0));
+
+    xTransform object_tranform = attachee->object_position_;
+    xTransform root_transform = attacher->object_position_;
+
+    btTransform root_to_object = Tr.inverse() *
+        root_transform.inverse() * Tt.inverse() * object_tranform;
+
+    body_data_.attach_transform = root_to_object;
+    body_data_.attach_orientation = object_tranform;
+}
+
+
+void RobotBase::UpdateAttachment(const float pitch, const float offset) {
+    auto bullet_world = wptr_to_sptr(bullet_world_);
+    auto attach_object = root_part_->attach_object_.lock();
+    if (attach_object && body_data_.attach_to_id == -1) {
+        bool contact = false;
+        std::vector<ContactPoint> contact_points;
+        bullet_world->GetContactPoints(
+                attach_object, 
+                attach_object->root_part_,
+                contact_points);
+
+        for (int i = 0; i < contact_points.size(); ++i) {
+            ContactPoint cp = contact_points[i];
+            if(cp.contact_distance < -0.008f) {
+                Detach();
+                contact = true;
+                break;
+            }
+        }
+
+        if (!contact) {
+            xTransform Tr;
+            xQuaternion cam_q(pitch, 0, 0);
+            Tr.setIdentity();
+            Tr.setRotation(cam_q);
+
+            xTransform Tt;
+            Tt.setIdentity();
+            Tt.setOrigin(xVector3(0, offset, 0));
+
+            xTransform new_T = root_obj_->object_position_;
+            xTransform attach_T = body_data_.attach_transform;
+            xTransform object_orn = body_data_.attach_orientation;
+            xTransform T = Tt * new_T * Tr * attach_T;
+
+            T.setRotation(object_orn.getRotation());
+            set_pose(bullet_world->client_, attach_object.get()->id(), T);
+        }
+    }
 }
 
 const RenderPart* RobotBase::render_root_ptr() const {
@@ -764,11 +707,26 @@ void RobotBase::attach_camera(const glm::vec3& offset,
                           glm::vec3& right,
                           glm::vec3& up) {
 
-    if (!root_part_) {
-        return;
-    }
-    BulletBody::attach_camera(
-            root_part_.get(), offset, pitch, loc, front, right, up);
+    if (!root_part_) { return; }
+    
+    xTransform pose = root_part_->object_position_;
+    auto base_rot = pose.getBasis();
+    glm::vec3 f = glm::normalize(base_rot * glm::vec3(1, 0, 0)); 
+    // TODO: this part of codes are just used to compute the offset of camera
+    // relative to the body, i.e., camera_aim.
+    glm::vec3 r = glm::cross(f, glm::vec3(0,-1,0));
+    glm::vec3 u = glm::cross(f, r);
+    glm::vec3 camera_aim(f*offset.x + u*offset.y + r*offset.z);
+
+    xMatrix3x3 pre_rot;
+    pre_rot.setIdentity();
+    pre_rot.setEulerYPR(0, glm::radians(pitch), 0);
+    front = glm::normalize(base_rot * pre_rot * glm::vec3(1, 0, 0)); 
+    right = glm::cross(front, glm::vec3(0,-1,0));
+    up = glm::cross(front, right);
+
+    auto base_position = pose.getOrigin();
+    loc = pose.getOrigin().glm() + camera_aim;
 }
 
 void RobotBase::hide(const bool hide) {
@@ -778,10 +736,10 @@ void RobotBase::hide(const bool hide) {
         auto bullet_world = wptr_to_sptr(bullet_world_);
 
         xScalar pos[3] = {0, -10, 0};
-        set_pose(bullet_world->client_, body_data_.body_uid, pos, (xScalar*)NULL);
+        set_pose(bullet_world->client_, id(), pos, (xScalar*)NULL);
         // Set Velocity to 0
         double velocity[3] = {0, 0, 0};
-        set_velocity(bullet_world->client_, body_data_.body_uid, velocity);
+        set_velocity(bullet_world->client_, id(), velocity);
         // Change Root to Static
         root_part_->SetStatic();
         root_part_->Sleep();
@@ -816,7 +774,7 @@ void Robot::CalculateInverseKinematics(
     auto bullet_world = wptr_to_sptr(bullet_world_);
     inverse_kinematics(
             bullet_world->client_,
-            body_data_.body_uid,
+            id(),
             end_index,
             target_pos,
             target_quat,
@@ -949,7 +907,7 @@ bool RobotWithConvertion::TakeAction(const int act_id) {
     parts_.clear();
     joints_.clear();
     RemoveRobotFromBullet();
-    bullet_world->RemoveObjectWithLabel(body_data_.body_uid);
+    bullet_world->RemoveObjectWithLabel(id());
 
     body_data_ = BulletBodyData();
     body_data_.label = label_;
@@ -966,7 +924,7 @@ bool RobotWithConvertion::TakeAction(const int act_id) {
     load_robot_joints(object_path_list_[act_id]);
     load_robot_shapes(scale_);
 
-    bullet_world->id_to_robot_[body_data_.body_uid] = shared_from_this();
+    bullet_world->id_to_robot_[id()] = shared_from_this();
 
     status_ = act_id;    
     return true;

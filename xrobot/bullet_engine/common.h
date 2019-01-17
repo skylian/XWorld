@@ -101,6 +101,15 @@ btTransform TransformFromReals(const T* p, const T* r);
 
 int get_num_joints(const ClientHandle client, const int id);
 
+void set_pose(const ClientHandle client, const int id, const btTransform& T);
+
+void set_pose(
+        const ClientHandle client,
+        const int id,
+        const glm::vec3& pos,
+        const glm::vec3& axis,
+        const float angle/*radius*/);
+
 void set_pose(
         const ClientHandle client,
         const int id,

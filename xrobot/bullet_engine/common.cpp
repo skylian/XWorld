@@ -39,6 +39,30 @@ int get_num_joints(const ClientHandle client, const int id) {
     return b3GetNumJoints(client, id);
 }
 
+void set_pose(const ClientHandle client, const int id, const btTransform& T) {
+    glm::vec3 pos(T.getOrigin()[0], T.getOrigin()[1], T.getOrigin()[2]);
+    glm::vec4 quat(
+            T.getRotation()[0],
+            T.getRotation()[1],
+            T.getRotation()[2], 
+            T.getRotation()[3]);
+    set_pose(client, id, pos, quat);
+}
+
+void set_pose(
+        const ClientHandle client,
+        const int id,
+        const glm::vec3& pos,
+        const glm::vec3& axis,
+        const float angle/*radius*/) {
+    auto btQ = btQuaternion(btVector3(axis[0], axis[1], axis[2]), angle);
+    CommandHandle cmd_handle = b3CreatePoseCommandInit(client, id);
+    b3CreatePoseCommandSetBasePosition(cmd_handle, pos[0], pos[1], pos[2]);
+    b3CreatePoseCommandSetBaseOrientation(
+                cmd_handle, btQ[0], btQ[1], btQ[2], btQ[3]);
+    b3SubmitClientCommandAndWaitStatus(client, cmd_handle);
+}
+
 void set_pose(
         const ClientHandle client,
         const int id,
